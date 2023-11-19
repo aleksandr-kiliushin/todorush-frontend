@@ -5,7 +5,10 @@ const CopyWebpackPlugin = require('copy-webpack-plugin')
 module.exports = {
   devServer: {
     historyApiFallback: true,
-    port: 3000,
+    port: 3400,
+    proxy: {
+      '/api': 'http://localhost:8000',
+    },
   },
   devtool: 'source-map',
   entry: './src/index.js',
