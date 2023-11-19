@@ -2,24 +2,20 @@ import { createSignal, createResource } from 'solid-js'
 import { render } from 'solid-js/web'
 
 const App = () => {
-  const [authorizedUser, { refetch: refetchAuthorizedUser }] = createResource(async () => {
-    try {
-      const response = await fetch('/api/me', {
-        headers: {
-          Authorization: localStorage.getItem('authorizationToken'),
-        },
-      })
-      const responseBody = await response.json()
-      return responseBody
-    } catch (error) {
-      return 'Error while fetching authorized user data: ' + error.message
-    }
+  const [authorizedUser, { refetch: refetchAuthorizedUser }] = createResource(() => {
+    return fetch(`${process.env.API_BASE_URL}/api/me`, {
+      headers: {
+        Authorization: localStorage.getItem('authorizationToken'),
+      },
+    })
+      .then((response) => response.json())
+      .catch((error) => 'Error while fetching authorized user data: ' + error.message)
   })
 
   const onAuthorize = (event) => {
     event.preventDefault()
     const formData = new FormData(event.target)
-    fetch('/api/authorize', {
+    fetch(`${process.env.API_BASE_URL}/api/authorize`, {
       method: 'POST',
       body: JSON.stringify({
         verification_code: formData.get('verification-code'),
@@ -39,22 +35,16 @@ const App = () => {
   }
 
   const [tasks, { refetch: refetchTasks }] = createResource(
-    async () => {
-      try {
-        const response = await fetch('/api/tasks', {
-          headers: {
-            Authorization: localStorage.getItem('authorizationToken'),
-          },
-        })
-        const responseBody = await response.json()
-        return responseBody
-      } catch (error) {
-        return []
-      }
+    () => {
+      return fetch(`${process.env.API_BASE_URL}/api/tasks`, {
+        headers: {
+          Authorization: localStorage.getItem('authorizationToken'),
+        },
+      })
+        .then((response) => response.json())
+        .catch(() => [])
     },
-    {
-      initialValue: [],
-    }
+    { initialValue: [] }
   )
 
   const addTask = (event) => {
@@ -66,7 +56,7 @@ const App = () => {
       return
     }
 
-    fetch(`/api/tasks`, {
+    fetch(`${process.env.API_BASE_URL}/api/tasks`, {
       method: 'POST',
       headers: {
         Authorization: localStorage.getItem('authorizationToken'),
@@ -85,7 +75,7 @@ const App = () => {
   }
 
   const deleteTask = (taskId) => {
-    fetch(`/api/tasks/${taskId}`, {
+    fetch(`${process.env.API_BASE_URL}/api/tasks/${taskId}`, {
       method: 'DELETE',
       headers: {
         Authorization: localStorage.getItem('authorizationToken'),
