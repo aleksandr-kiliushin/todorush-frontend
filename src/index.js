@@ -30,6 +30,7 @@ const App = () => {
           localStorage.setItem('authorizationToken', responseBody.authorization_token)
           alert('Successfull authorization')
           refetchAuthorizedUser()
+          refetchTasks()
         }
       })
   }
