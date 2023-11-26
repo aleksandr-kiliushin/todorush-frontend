@@ -1,68 +1,63 @@
-import { createSignal, createResource, Show, For, createEffect } from 'solid-js'
+import { request } from '#utils/request'
+import { createResource, Show, For } from 'solid-js'
 import { render } from 'solid-js/web'
+import { TTask, TUser } from '#types/index'
 
 const App = () => {
   const [authorizedUser, { refetch: refetchAuthorizedUser }] = createResource(async () => {
     try {
-      const response = await fetch(`${process.env.API_BASE_URL}/api/me`, {
-        // @ts-ignore
-        headers: {
-          Authorization: localStorage.getItem('authorizationToken'),
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error(await response.json())
-      }
-
-      return await response.json()
-    } catch (error) {
-      const errorMessage = 'Error while fetching authorized user data: ' + JSON.stringify(error)
+      const response = await request.get<TUser>({ url: '/api/me' })
+      return response.data
+    } catch {
       return null
     }
   })
 
-  // @ts-ignore
-  const onAuthorize = (event) => {
+  const onAuthorize = async (event: Event) => {
     event.preventDefault()
+
+    if (!(event.target instanceof HTMLFormElement)) {
+      return
+    }
+
     const formData = new FormData(event.target)
-    fetch(`${process.env.API_BASE_URL}/api/authorize`, {
-      method: 'POST',
-      body: JSON.stringify({
-        verification_code: formData.get('verification-code'),
-      }),
-    })
-      .then((response) => response.json())
-      .then((responseBody) => {
-        if ('error' in responseBody) {
-          alert('Authorization error: ' + responseBody.error)
-        }
-        if ('authorization_token' in responseBody) {
-          localStorage.setItem('authorizationToken', responseBody.authorization_token)
-          alert('Successfull authorization')
-          refetchAuthorizedUser()
-          refetchTasks()
-        }
+
+    try {
+      const response = await request.post<{ authorization_token: string }>({
+        payload: {
+          verification_code: formData.get('verification-code'),
+        },
+        url: '/api/authorize',
       })
+
+      localStorage.setItem('authorizationToken', response.data.authorization_token)
+
+      refetchAuthorizedUser()
+      refetchTasks()
+    } catch {
+      //
+    }
   }
 
   const [tasks, { refetch: refetchTasks }] = createResource(
-    () => {
-      return fetch(`${process.env.API_BASE_URL}/api/tasks`, {
-        // @ts-ignore
-        headers: {
-          Authorization: localStorage.getItem('authorizationToken'),
-        },
-      })
-        .then((response) => response.json())
-        .catch(() => [])
+    async () => {
+      try {
+        const response = await request.get<TTask[]>({ url: '/api/tasks' })
+        return response.data
+      } catch {
+        return []
+      }
     },
     { initialValue: [] }
   )
 
-  // @ts-ignore
-  const addTask = (event) => {
+  const addTask = async (event: Event) => {
     event.preventDefault()
+
+    if (!(event.target instanceof HTMLFormElement)) {
+      return
+    }
+
     const formData = new FormData(event.target)
     const title = formData.get('title')
 
@@ -70,82 +65,68 @@ const App = () => {
       return
     }
 
-    fetch(`${process.env.API_BASE_URL}/api/tasks`, {
-      method: 'POST',
-      // @ts-ignore
-      headers: {
-        Authorization: localStorage.getItem('authorizationToken'),
-      },
-      body: JSON.stringify({ title }, null, 2),
-    })
-      .then((response) => response.json())
-      .then((responseBody) => {
-        if ('error' in responseBody) {
-          alert('Error while creating task: ' + responseBody.error)
-        } else {
-          // @ts-ignore
-          document.querySelector('#title').value = ''
-          refetchTasks()
-        }
-      })
+    try {
+      await request.post({ url: '/api/tasks', payload: { title } })
+      const taskTitleInput = document.querySelector('#title')
+      if (taskTitleInput instanceof HTMLInputElement) {
+        taskTitleInput.value = ''
+      }
+      await refetchTasks()
+    } catch {
+      //
+    }
   }
 
-  const deleteTask = (taskId: number) => {
-    fetch(`${process.env.API_BASE_URL}/api/tasks/${taskId}`, {
-      method: 'DELETE',
-      // @ts-ignore
-      headers: {
-        Authorization: localStorage.getItem('authorizationToken'),
-      },
-    })
-      .then((response) => response.json())
-      .then((responseBody) => {
-        if ('error' in responseBody) {
-          alert('Error while deleting task: ' + responseBody.error)
-        } else {
-          refetchTasks()
-        }
-      })
+  const deleteTask = async (taskId: TTask['id']) => {
+    try {
+      await request.delete({ url: `/api/tasks/${taskId}` })
+
+      refetchTasks()
+    } catch {
+      //
+    }
   }
-
-  const [count, setCount] = createSignal(0)
-
-  createEffect(() => {
-    console.log('authorizedUser() >>', authorizedUser())
-  })
 
   return (
     <>
       <h1>TODORUSH</h1>
       {/* ADD A TASK */}
-      <Show when={authorizedUser()?.user_id}>
+      <Show when={authorizedUser() !== null}>
         <hr />
-        <h2>Add a task</h2>
-        <form onSubmit={addTask}>
-          <label for="title">Title</label>
-          <input type="text" id="title" name="title" />
-          <button type="submit">Submit</button>
-        </form>
+        <section style="background-color: #bbbbbb;">
+          <h2>Add a task</h2>
+          <form onSubmit={addTask}>
+            <label for="title">Title</label>
+            <input type="text" id="title" name="title" />
+            <button type="submit">Submit</button>
+          </form>
+        </section>
       </Show>
       {/* TASKS LIST */}
-      <Show when={authorizedUser()?.user_id}>
+      <Show when={authorizedUser() !== null}>
         <hr />
-        <h2>TODOs</h2>
-        <ul>
-          <For each={tasks()}>
-            {(task) => (
-              <li style="margin-bottom: 8px;">
-                #{task.id}: {task.title}
-                <button type="button" onClick={() => deleteTask(task.id)} style="margin-left: 4px;">
-                  Delete
-                </button>
-              </li>
-            )}
-          </For>
-          <Show when={tasks().length === 0}>
-            <li>No TODOs</li>
-          </Show>
-        </ul>
+        <section style="background-color: #dddddd;">
+          <h2>TODOs</h2>
+          <ul>
+            <For each={tasks()}>
+              {(task) => (
+                <li style="margin-bottom: 8px;">
+                  #{task.id}: {task.title}
+                  <button
+                    type="button"
+                    onClick={() => deleteTask(task.id)}
+                    style="margin-left: 4px;"
+                  >
+                    Delete
+                  </button>
+                </li>
+              )}
+            </For>
+            <Show when={tasks().length === 0}>
+              <li>No TODOs</li>
+            </Show>
+          </ul>
+        </section>
       </Show>
       {/* AUTHORIZED USER */}
       <br />
@@ -155,54 +136,52 @@ const App = () => {
       <br />
       <br />
       <br />
-      <h2>User:</h2>
-      <pre>{JSON.stringify(authorizedUser(), null, 2)}</pre>
+      <section style="background-color: #bbbbbb;">
+        <h2>User:</h2>
+        <pre>{JSON.stringify(authorizedUser(), null, 2)}</pre>
+      </section>
       {/* AUTHORIZATION FORM */}
       <Show when={authorizedUser() === null}>
         <hr />
-        <h2>Authorization form</h2>
-        <p>
-          To get verification code, visit{' '}
-          <a href="https://t.me/TodoRushBot" target="_blank" rel="noopener">
-            Telegram TodoRushBot
-          </a>{' '}
-          and execute there <code>/verification_code</code> command.
-        </p>
-        <form onSubmit={onAuthorize}>
-          <label for="verification-code">Verification code</label>
-          <input type="text" id="verification-code" name="verification-code" />
-          <button type="submit">Submit</button>
-        </form>
+        <section style="background-color: #dddddd;">
+          <h2>Authorization form</h2>
+          <p>
+            To get verification code, visit{' '}
+            <a href="https://t.me/TodoRushBot" target="_blank" rel="noopener">
+              Telegram TodoRushBot
+            </a>{' '}
+            and execute there <code>/verification_code</code> command.
+          </p>
+          <form onSubmit={onAuthorize}>
+            <label for="verification-code">Verification code</label>
+            <input type="text" id="verification-code" name="verification-code" />
+            <button type="submit">Submit</button>
+          </form>
+        </section>
       </Show>
       {/* LOGOUT */}
-      <Show when={authorizedUser()?.user_id}>
+      <Show when={authorizedUser() !== null}>
         <hr />
-        <h2>Logout</h2>
-        <button
-          type="button"
-          onClick={() => {
-            localStorage.removeItem('authorizationToken')
-            refetchAuthorizedUser()
-          }}
-        >
-          Logout
-        </button>
+        <section style="background-color: #bbbbbb;">
+          <h2>Logout</h2>
+          <button
+            type="button"
+            onClick={() => {
+              localStorage.removeItem('authorizationToken')
+              refetchAuthorizedUser()
+            }}
+          >
+            Logout
+          </button>
+        </section>
       </Show>
-      {/* COUNTER */}
-      <hr />
-      <h2>Counter (essentially important)</h2>
-      <button
-        type="button"
-        onClick={() => {
-          setCount(count() + 1)
-        }}
-      >
-        Increment
-      </button>
-      Count: {count()}
     </>
   )
 }
 
-// @ts-ignore
-render(App, document.querySelector('#root'))
+const rootNode = document.querySelector('#root')
+if (rootNode === null) {
+  throw new Error('#root is not found, cannot mount the app.')
+}
+
+render(App, rootNode)

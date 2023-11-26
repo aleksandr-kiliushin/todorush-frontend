@@ -17,6 +17,7 @@
     "noImplicitReturns": false,
     "noUnusedParameters": false,
     "paths": {
+      "#types/*": ["./src/types/*"],
       "#utils/*": ["./src/utils/*"],
       "#src/*": ["./src/*"]
     },
