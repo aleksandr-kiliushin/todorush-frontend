@@ -1,16 +1,25 @@
-import { createSignal, createResource, Show, For } from 'solid-js'
+import { createSignal, createResource, Show, For, createEffect } from 'solid-js'
 import { render } from 'solid-js/web'
 
 const App = () => {
-  const [authorizedUser, { refetch: refetchAuthorizedUser }] = createResource(() => {
-    return fetch(`${process.env.API_BASE_URL}/api/me`, {
-      // @ts-ignore
-      headers: {
-        Authorization: localStorage.getItem('authorizationToken'),
-      },
-    })
-      .then((response) => response.json())
-      .catch((error) => 'Error while fetching authorized user data: ' + error.message)
+  const [authorizedUser, { refetch: refetchAuthorizedUser }] = createResource(async () => {
+    try {
+      const response = await fetch(`${process.env.API_BASE_URL}/api/me`, {
+        // @ts-ignore
+        headers: {
+          Authorization: localStorage.getItem('authorizationToken'),
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(await response.json())
+      }
+
+      return await response.json()
+    } catch (error) {
+      const errorMessage = 'Error while fetching authorized user data: ' + JSON.stringify(error)
+      return null
+    }
   })
 
   // @ts-ignore
@@ -101,6 +110,10 @@ const App = () => {
 
   const [count, setCount] = createSignal(0)
 
+  createEffect(() => {
+    console.log('authorizedUser() >>', authorizedUser())
+  })
+
   return (
     <>
       <h1>TODORUSH</h1>
@@ -145,7 +158,7 @@ const App = () => {
       <h2>User:</h2>
       <pre>{JSON.stringify(authorizedUser(), null, 2)}</pre>
       {/* AUTHORIZATION FORM */}
-      <Show when={authorizedUser()?.error}>
+      <Show when={authorizedUser() === null}>
         <hr />
         <h2>Authorization form</h2>
         <p>
