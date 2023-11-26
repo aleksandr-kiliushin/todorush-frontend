@@ -16,7 +16,10 @@
     "noImplicitAny": true,
     "noImplicitReturns": false,
     "noUnusedParameters": false,
-    "paths": {},
+    "paths": {
+      "#utils/*": ["./src/utils/*"],
+      "#src/*": ["./src/*"]
+    },
     "removeComments": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,

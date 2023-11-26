@@ -1,3 +1,4 @@
+const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin')
 const path = require('path')
 require('dotenv').config({ path: './.env' })
 const webpack = require('webpack')
@@ -37,6 +38,11 @@ module.exports = {
     }),
   ],
   resolve: {
-    extensions: ['.js'],
+    extensions: ['.js', '.ts', '.tsx'],
+    plugins: [
+      new TsconfigPathsPlugin({
+        configFile: path.join(__dirname, './tsconfig.json'),
+      }),
+    ],
   },
 }
