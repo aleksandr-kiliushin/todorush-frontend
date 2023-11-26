@@ -1,9 +1,10 @@
-import { createSignal, createResource } from 'solid-js'
+import { createSignal, createResource, Show, For } from 'solid-js'
 import { render } from 'solid-js/web'
 
 const App = () => {
   const [authorizedUser, { refetch: refetchAuthorizedUser }] = createResource(() => {
     return fetch(`${process.env.API_BASE_URL}/api/me`, {
+      // @ts-ignore
       headers: {
         Authorization: localStorage.getItem('authorizationToken'),
       },
@@ -12,6 +13,7 @@ const App = () => {
       .catch((error) => 'Error while fetching authorized user data: ' + error.message)
   })
 
+  // @ts-ignore
   const onAuthorize = (event) => {
     event.preventDefault()
     const formData = new FormData(event.target)
@@ -38,6 +40,7 @@ const App = () => {
   const [tasks, { refetch: refetchTasks }] = createResource(
     () => {
       return fetch(`${process.env.API_BASE_URL}/api/tasks`, {
+        // @ts-ignore
         headers: {
           Authorization: localStorage.getItem('authorizationToken'),
         },
@@ -48,6 +51,7 @@ const App = () => {
     { initialValue: [] }
   )
 
+  // @ts-ignore
   const addTask = (event) => {
     event.preventDefault()
     const formData = new FormData(event.target)
@@ -59,6 +63,7 @@ const App = () => {
 
     fetch(`${process.env.API_BASE_URL}/api/tasks`, {
       method: 'POST',
+      // @ts-ignore
       headers: {
         Authorization: localStorage.getItem('authorizationToken'),
       },
@@ -69,15 +74,17 @@ const App = () => {
         if ('error' in responseBody) {
           alert('Error while creating task: ' + responseBody.error)
         } else {
+          // @ts-ignore
           document.querySelector('#title').value = ''
           refetchTasks()
         }
       })
   }
 
-  const deleteTask = (taskId) => {
+  const deleteTask = (taskId: number) => {
     fetch(`${process.env.API_BASE_URL}/api/tasks/${taskId}`, {
       method: 'DELETE',
+      // @ts-ignore
       headers: {
         Authorization: localStorage.getItem('authorizationToken'),
       },
@@ -184,4 +191,5 @@ const App = () => {
   )
 }
 
+// @ts-ignore
 render(App, document.querySelector('#root'))
